@@ -1,0 +1,242 @@
+RoseHosting.com
+Hosting Solutions 
+SSL / Domains 
+Support 
+About Us 
+Affiliates 
+Blog
+Login
+How to configure remote and secure connections for MySQL on Ubuntu 16.04
+August 31, 2017 by Jeff Wilson
+
+In this article, we will show you how to configure remote and secure connections for MySQL on Ubuntu 16.04 VPS.  If you are using an unencrypted connection to connect to your remote MariaDB/MySQL server, then everyone with access to the network could monitor and analyze the data being sent or received between the client and the server. This guide should work on other Linux VPS systems as well but was tested and written for an Ubuntu 16.04 VPS.
+
+
+Table of Contents	
+1. Login to your VPS via SSH
+2. Create a new local certificate authority
+3. Generate Server Certificate and Key
+4. Generate Clients Certificate and Key
+5. Enable MySQL Server SSL Connections
+6. Enable Remote Connections via SSL
+7. Configure MySQL Client
+8. Test Your Connection
+1. Login to your VPS via SSH
+ssh my_sudo_user@my_server
+The steps in this tutorial assume that you have installed MySQL 5.7 with the default configuration.
+
+Enable SSL Connections:
+
+2. Create a new local certificate authority
+We will use the local certificate authority as a self-signed root certificate which we will use to sign both server and client certificates. To create a new local certificate authority file run the following commands:
+
+sudo openssl genrsa -out /etc/mysql/ca-key.pem 2048
+sudo chmod 600 /etc/mysql/ca-key.pem
+sudo openssl req -new -key /etc/mysql/ca-key.pem -out /etc/mysql/ca-csr.pem -subj /CN=mysql-CA/
+sudo openssl x509 -req -in /etc/mysql/ca-csr.pem -out /etc/mysql/cacert.pem -signkey /etc/mysql/ca-key.pem -days 3650
+sudo echo 01 > /etc/mysql/cacert.srl
+3. Generate Server Certificate and Key
+To generate a server certificate and key issue the following commands:
+
+sudo openssl genrsa -out /etc/mysql/server-key.pem 2048
+sudo chmod 600 /etc/mysql/server-key.pem
+sudo openssl req -new -key /etc/mysql/server-key.pem -out /etc/mysql/server-csr.pem -subj /CN=mysql/
+sudo openssl x509 -req -in /etc/mysql/server-csr.pem -out /etc/mysql/server-cert.pem -CA /etc/mysql/cacert.pem -CAkey /etc/mysql/ca-key.pem -days 365
+4. Generate Clients Certificate and Key
+Next, we need to generate the client certificate. Run the following commands to generate a client certificate and key:
+
+sudo openssl genrsa -out /etc/mysql/client-key.pem 2048
+sudo chmod 600 /etc/mysql/client-key.pem
+sudo openssl req -new -key /etc/mysql/client-key.pem -out /etc/mysql/client-csr.pem -subj /CN=mysql/
+sudo openssl x509 -req -in /etc/mysql/client-csr.pem -out /etc/mysql/client-cert.pem -CA /etc/mysql/cacert.pem -CAkey /etc/mysql/ca-key.pem -days 365
+If you want to have a CA signed SSL certificate, you can purchase a trusted SSL certificate here.
+
+5. Enable MySQL Server SSL Connections
+Open the the MySQL configuration file with your text editor:
+
+sudo nano /etc/mysql/mysql.conf.d/mysqld.cnf
+and uncomment the following lines:
+
+ssl-ca=/etc/mysql/cacert.pem
+ssl-cert=/etc/mysql/server-cert.pem
+ssl-key=/etc/mysql/server-key.pem
+Save the file and restart the MySQL service:
+
+sudo systemctl restart mysql 
+To verify that SSL is enabled, login to the MySQL server
+
+mysql -uroot -p
+and run the following command:
+
+mysql> show variables LIKE '%ssl%';
+The output should be similar to the following one:
+
++---------------+----------------------------+
+| Variable_name | Value                      |
++---------------+----------------------------+
+| have_openssl  | YES                        |
+| have_ssl      | YES                        |
+| ssl_ca        | /etc/mysql/cacert.pem      |
+| ssl_capath    |                            |
+| ssl_cert      | /etc/mysql/server-cert.pem |
+| ssl_cipher    |                            |
+| ssl_crl       |                            |
+| ssl_crlpath   |                            |
+| ssl_key       | /etc/mysql/server-key.pem  |
++---------------+----------------------------+
+9 rows in set (0.15 sec)
+6. Enable Remote Connections via SSL
+By default, MySQL only listens for connections on localhost. To enable remote connections you need to reconfigure MySQL on your server to listen on all interfaces, to do that open the MySQL configuration file:
+
+sudo nano /etc/mysql/mysql.conf.d/mysqld.cnf
+and change
+
+bind-address            = 127.0.0.1
+to
+
+bind-address            = 0.0.0.0
+In order for the changes to take effect, restart the MySQL server with the following command:
+
+sudo systemctl restart mysql 
+Verify that your MySQL server listens on all interfaces:
+
+sudo netstat -anp | grep 3306
+the output should be similar to the following one:
+
+tcp        0      0 0.0.0.0:3306            0.0.0.0:*               LISTEN      938/mysqld
+To enable your MySQL client to connect to the MySQL server, you need to grant the database user access to the database on the remote server.
+
+For example if you want to grant access to the dbuser user to the database_name database and to force SSL, login to the MySQL shell as root and run the following command:
+
+GRANT ALL ON database_name.* TO dbuser@192.168.1.10 IDENTIFIED BY 'dbuserpassword' REQUIRE SSL;
+where 192.168.1.10 is your MySQL client machine IP address.
+
+Next, you need to configure your MySQL client to use the previously generated SSL certificate. Copy the following files from your MySQL server to your MySQL client machine:
+
+/etc/mysql/cacert.pem
+/etc/mysql/client-cert.pem
+/etc/mysql/client-key.pem
+7. Configure MySQL Client
+open your MySQL client configuration and add the following lines:
+
+[client]
+ssl-ca=/etc/mysql/cacert.pem
+ssl-cert=/etc/mysql/client-cert.pem
+ssl-key=/etc/mysql/client-key.pem
+8. Test Your Connection
+You can now test your connection from the client machine to the MySQL database server:
+
+mysql -udbuser -pdbuserpassword -h 192.168.1.5
+where 192.168.1.5 is your MySQL database server IP address.
+
+That’s it. You have successfully configured remote and secure connections for MySQL on your Ubuntu 16.04 VPS. For more information about MySQL secure connections, please refer to the official MySQL documentation.
+
+Of course, you don’t have to configure remote and secure connections for MySQL on Ubuntu 16.04 if you use one of our Ubuntu VPS Hosting Services, in which case you can simply ask our expert Linux admins to configure remote and secure connections for MySQL on Ubuntu 16.04 for you. They are available 24×7 and will take care of your request immediately.
+
+PS. If you liked this post on how to configure remote and secure connections for MySQL on Ubuntu 16.04, please share it with your friends on the social networks using the buttons on the left or simply leave a reply below. Thanks.
+
+CategoriesDatabases, Networking and Domains, Ubuntu
+Post navigation
+How to Install Laravel on a DirectAdmin Server
+How to install Laravel on cPanel
+2 thoughts on “How to configure remote and secure connections for MySQL on Ubuntu 16.04”
+
+Tomas
+September 5, 2017 at 06:01
+Hi, great article! I don’t think it was mentioned anywhere, which version of SSL/TLS does this support and can you force the MySQL server to provide TLS 1.2 only?
+
+Reply
+
+admin
+September 7, 2017 at 04:51
+By default, TLSv1, TLSv1.1, TLSv1.2 are enabled. You can change the value for the TLS version in my.cnf. More information about this you can find at https://dev.mysql.com/doc/refman/5.7/en/encrypted-connection-protocols-ciphers.html
+
+Thanks.
+
+Reply
+Leave a Comment
+Comment
+Name
+Name *
+Email
+Email *
+Website
+Website
+ Save my name, email, and website in this browser for the next time I comment.
+
+Move the slider all the way to the right to verify you are human. *
+
+Slide to verify
+
+About RoseHosting
+Buy a Managed VPS - 25% OFF
+Customer Reviews
+Managed NVMe VPSes
+Managed NVMe Dedicated Servers
+How to Speed Up WordPress and Boost Performance on an Ubuntu 20.04 VPS
+How to Install ERPNext on Ubuntu 20.04
+how to install odoo 13 on ubuntu 20 04How to Install Odoo 13 on Ubuntu 20.04
+How to Install phpMyAdmin on Ubuntu 20.04
+How to Install Odoo 13 on a CentOS 8 Server
+facebooktwitterlinkedin
+Search for:
+Search …
+COMPANY
+About us
+Our Policies
+Contact Us
+Blog
+Why RoseHosting
+Compare Us
+Customer Reviews
+Awards & Recognition
+SUPPORT
+Helpdesk System
+Knowledge Base
+Systems Status
+OTHER SERVICES
+Domain Registration
+Domain Transfer
+SSL Certificates
+HOSTING
+Web Hosting
+Linux VPS Hosting
+NVMe Hosting
+Custom SSD VPS
+Cloud Dedicated Servers
+Hosting Solutions
+Recurr. Affiliate Program
+CPA Affiliate Program
+LINUX VPS HOSTING
+CentOS Hosting
+Ubuntu Hosting
+Debian Hosting
+OpenSUSE Hosting
+Arch-Linux Hosting
+Scientific Linux Hosting
+APPS HOSTING
+WordPress Hosting
+Magento Hosting
+Odoo Hosting
+Joomla Hosting
+Drupal Hosting
+Laravel Hosting
+NextCloud Hosting
+PrestaShop Hosting
+Ghost Hosting
+MediaWiki Hosting
+Tomcat Hosting
+CONTACT US
+(888) ROSE-HOST
+(888) 767-3467
+(314) 275-0414
+Email us
+CONNECT
+ Twitter
+ Facebook
+ LinkedIn
+ RSS Feed
+privacy shield
+Terms of Service and other policies
+
+© 2001-2020 Rose Web Services LLC.
