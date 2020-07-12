@@ -6,6 +6,7 @@ error_reporting(E_ALL);
 
 require './src/rb.php';
 require './src/Server.php';
+require './src/ServerList.php';
 
 /*
 //PDO connection  **NOT USED
@@ -60,42 +61,33 @@ R::close(); //closes ORM connection
 
 <body>
 <?php
-$existingServers = [];
-foreach ($servers as &$server) {
-    $existingServers[] = new Server($server['SERVER_NAME']);
+$inventory = new ServerList();
+$inventory->serverAdd(new Server('Markao 01'));
+$inventory->serverAdd(new Server('Markao 02'));
+$inventory->serverRemove('Markao 01');
+
+$inventory->getServerList();
+
+
+foreach ($servers as $server) {
+    $inventory->serverAdd(new Server($server['SERVER_NAME']));
 }
 unset($server); // break the reference with the last element
-
-foreach ($existingServers as &$server) {
-    printf ($server->getServerName().'<br>'); 
-	printf ($server->getServerStatus().'<br>'); 
-}
-unset($server); // break the reference with the last element
-
-foreach ($existingServers as &$server) {
+print_r($inventory);
+$inventory->getServerList();
+printf('<br>'.PHP_EOL);
+foreach ($inventory->server_inventory as $server) {
 	$server->startServer();
-	printf ($server->getServerName().'<br>'); 
-	printf ($server->getServerStatus().'<br>'); 
 }
+$inventory->getServerList();
+printf('<br>'.PHP_EOL);
 unset($server); // break the reference with the last element
 
-foreach ($existingServers as &$server) {
+foreach ($inventory->server_inventory as $server) {
 	$server->stopServer();
-	printf ($server->getServerName().'<br>'); 
-	printf ($server->getServerStatus().'<br>'); 
 }
 unset($server); // break the reference with the last element
-
-
-$server1 = new Server('Server 01');
-printf ($server1->getServerName()); echo '<br>';
-printf ($server1->getServerStatus()); echo '<br>';
-
-$server1->startServer();
-printf ($server1->getServerStatus()); echo '<br>';
-$server1->stopServer();
-printf ($server1->getServerStatus()); echo '<br>';
-
+$inventory->getServerList();
     
 ?>	
 </body>
