@@ -1,4 +1,8 @@
 <?php
+//some draft basic html interface for testing purposes
+// to do: 	-interactive user interface (front-end)
+//			- Data Access Object (DAO) to load and save data to the database
+
 ini_set('display_errors', '1');
 ini_set('display_startup_errors', '1');
 error_reporting(E_ALL);
@@ -30,21 +34,25 @@ $conn = null;
 //ORM connection
 R::setup( 'mysql:host=localhost;dbname=SEEDBOX_OLTP',
         'ADMIN', '!1q2w3e4r' );
+//the database connection is secured with SSL for remote clients. 
+//Keys, certs ans CAs for the server and clients are found in /src/ssl/mysql dir.
+//The connection will be refused if ssl is not properly configured on clients
 
-
-$tables = R::inspect();
+//test connection to database via ORM
+/*$tables = R::inspect();
 foreach ($tables as &$table) {
     printf($table.'<br>');
 }
 unset($table); // break the reference with the last element
+*/
 
-
-$privileges = R::getAll( 'SELECT * FROM PRIVILEGES' );
-$users = R::getAll( 'SELECT * FROM USERS' );
+//load from ORM
+$privileges = R::getAll( 'SELECT * FROM PRIVILEGES' ); // not used
+$users = R::getAll( 'SELECT * FROM USERS' ); //not used
 $servers = R::getAll( 'SELECT * FROM SERVERS' );
-$eventLog = R::getAll( 'SELECT * FROM EVENTS' );
+$eventLog = R::getAll( 'SELECT * FROM EVENTS' );// not used
 
-R::close(); //closes ORM connection
+
 
 
 
@@ -62,32 +70,46 @@ R::close(); //closes ORM connection
 <body>
 <?php
 $inventory = new ServerList();
-$inventory->serverAdd(new Server('Markao 01'));
-$inventory->serverAdd(new Server('Markao 02'));
-$inventory->serverRemove('Markao 01');
 
-$inventory->getServerList();
+//as there's no interactice user interface, the user interactions are shown here in the index.php code.
+$inventory->serverAdd(new Server('MyTestServer 01')); //user adds server (stopped by default on create)
+$inventory->serverAdd(new Server('MyTestServer 02','START')); //user adds another server
+$inventory->serverRemove('MyTestServer 01'); //user removes one server (by name)
+
+$inventory->getServerList(); //user lists existing servers
 
 
 foreach ($servers as $server) {
-    $inventory->serverAdd(new Server($server['SERVER_NAME']));
+    $inventory->serverAdd(new Server($server['SERVER_NAME'],$server['SERVER_RUNNING_STATUS'])); //System loads all servers from the database (via ORM)
 }
 unset($server); // break the reference with the last element
-print_r($inventory);
-$inventory->getServerList();
-printf('<br>'.PHP_EOL);
+
+$inventory->getServerList(); //user lists existing servers
+printf('<br>'.PHP_EOL);  //<br> for the http interface -- PHP_EOL for the console interface
 foreach ($inventory->server_inventory as $server) {
-	$server->startServer();
+	$server->startServer(); // user sending start signal to all servers
 }
 $inventory->getServerList();
 printf('<br>'.PHP_EOL);
 unset($server); // break the reference with the last element
 
 foreach ($inventory->server_inventory as $server) {
-	$server->stopServer();
+	$server->stopServer(); //user sending stop signal to all servers
 }
 unset($server); // break the reference with the last element
-$inventory->getServerList();
+
+$inventory->getServerList(); //user listing servers
+
+//saving back to ORM ---> database
+
+R::exec('DELETE FROM SERVERS;');
+foreach ($inventory->server_inventory as $server) {
+	$s_name = $server->getServerName(); // 
+	$s_status = $server->getServerStatus();
+	R::exec('insert into SERVERS (SERVER_NAME, SERVER_RUNNING_STATUS) values("'.$s_name.'", "'.$s_status.'");');
+}
+
+R::close(); //closes ORM connection
     
 ?>	
 </body>
