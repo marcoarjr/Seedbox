@@ -2,29 +2,15 @@
 
 use PHPUnit\Framework\TestCase;
 
-final class EmailTest extends TestCase
+final class ServerTest extends TestCase
 {
-    public function testCanBeCreatedFromValidEmailAddress()
+    public function testNameCannotBeEmpty()
     {
-        $this->assertInstanceOf(
-            Email::class,
-            Email::fromString('user@example.com')
-        );
+		$test = 'abc';
+		$this->assertInternalType('string', $test, "Got a " . gettype($test) . " instead of a string.");
+		//$this->assertIsString($server_name);
     }
 
-    public function testCannotBeCreatedFromInvalidEmailAddress()
-    {
-        $this->setExpectedException(InvalidArgumentException::class);
 
-        Email::fromString('invalid');
-    }
-
-    public function testCanBeUsedAsString()
-    {
-        $this->assertEquals(
-            'user@example.com',
-            Email::fromString('user@example.com')
-        );
-    }
 }
 ?>
