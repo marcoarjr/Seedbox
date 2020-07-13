@@ -13,12 +13,12 @@ class Server
 	private $name;
 	private $running_status;
 
-    public function __construct($server_name)
+    public function __construct($server_name,$server_running_status = 'STOP')
     {
         $this->ensureIsValidServerName($server_name);
 
         $this->name = $server_name;
-        $this->running_status = 'Stop';
+        $this->running_status = $server_running_status;
     }
     private function ensureIsValidServerName($server_name)
     {
@@ -44,14 +44,14 @@ class Server
     public function	startServer()
     {
 		// changes the server's running status to start
-		$this->running_status = 'Start';
+		$this->running_status = 'START';
 		return 'Start';
 	}
 	
     public function	stopServer()
     {
 		// changes the server's running status to stop
-		$this->running_status = 'Stop';
+		$this->running_status = 'STOP';
 		return 'Stop';
 	}
 }
